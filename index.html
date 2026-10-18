@@ -2,48 +2,53 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>67.ai — Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>67.ai</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,"Segoe UI",Inter,Helvetica,Arial,sans-serif; background:#0b0b10; color:#e8e8f0; height:100vh; display:flex; flex-direction:column; }
-  header { padding:18px 28px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1d1d2a; }
-  .logo { font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
-  .logo span { color:#7c5cff; }
-  .status { font-size:.85rem; color:#7a7a92; }
-  .status b { color:#5ee0a0; font-weight:600; }
-  .wrap { flex:1; display:grid; grid-template-columns:1fr 1fr; min-height:0; }
-  .chat { display:flex; flex-direction:column; border-right:1px solid #1d1d2a; min-height:0; }
-  .messages { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:12px; }
-  .msg { max-width:80%; padding:12px 16px; border-radius:16px; line-height:1.5; white-space:pre-wrap; font-size:.95rem; }
-  .bot { background:#15151d; border:1px solid #25253a; align-self:flex-start; border-bottom-left-radius:4px; }
-  .user { background:#7c5cff; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
-  form { display:flex; gap:10px; padding:16px 24px; border-top:1px solid #1d1d2a; }
-  input { flex:1; background:#15151d; border:1px solid #25253a; border-radius:999px; padding:12px 18px; color:#fff; font-size:.95rem; outline:none; }
-  input:focus { border-color:#7c5cff; }
-  button { background:#7c5cff; color:#fff; border:0; border-radius:999px; padding:0 22px; font-weight:600; cursor:pointer; }
-  button:hover { background:#6a4af0; }
-  .code { display:flex; flex-direction:column; min-height:0; }
-  .code h2 { font-size:1rem; padding:18px 24px 6px; }
-  .code p { font-size:.85rem; color:#7a7a92; padding:0 24px 12px; }
-  pre { flex:1; overflow:auto; margin:0 24px 24px; background:#101018; border:1px solid #25253a; border-radius:12px; padding:18px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.8rem; line-height:1.55; color:#cfcfe6; }
-  @media (max-width:860px){ .wrap{ grid-template-columns:1fr; grid-template-rows:60vh auto; } .chat{border-right:0;border-bottom:1px solid #1d1d2a;} pre{max-height:60vh;} }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Helvetica,Arial,sans-serif;background:#000;color:#ececec;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;gap:14px;padding:14px 18px;flex-shrink:0}
+  .menu{background:none;border:0;cursor:pointer;padding:6px;display:flex;flex-direction:column;gap:5px}
+  .menu span{display:block;height:2px;background:#ececec;border-radius:2px}
+  .menu span:nth-child(1){width:22px}.menu span:nth-child(2){width:15px}
+  .brand{font-size:1.35rem;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .brand svg{opacity:.7}
+  main{flex:1;display:flex;flex-direction:column;min-height:0;width:100%;max-width:760px;margin:0 auto}
+  .hero{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 24px}
+  .hero h1{font-size:clamp(1.7rem,4.5vw,2.1rem);font-weight:400;letter-spacing:-.01em}
+  .messages{display:none;flex:1;overflow-y:auto;padding:12px 20px 8px;flex-direction:column;gap:22px}
+  body.chatting .hero{display:none} body.chatting .messages{display:flex}
+  .msg{line-height:1.6;white-space:pre-wrap;font-size:1rem;max-width:100%}
+  .user{align-self:flex-end;background:#2f2f2f;padding:10px 18px;border-radius:22px;max-width:80%}
+  .bot{align-self:flex-start;color:#ececec}
+  .composer{padding:8px 18px 10px}
+  form{background:#262626;border:1px solid #3a3a3a;border-radius:28px;padding:14px 12px 10px 22px;display:flex;flex-direction:column;gap:10px}
+  input{background:transparent;border:0;outline:none;color:#fff;font-size:1.1rem;font-family:inherit;width:100%}
+  input::placeholder{color:#9b9b9b}
+  .row{display:flex;justify-content:flex-end}
+  .send{width:44px;height:44px;border-radius:50%;border:0;background:#3b6fd4;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .send:hover{background:#4a7ee3}
+  .legal{text-align:center;color:#b4b4b4;font-size:.85rem;line-height:1.5;padding:4px 24px 18px}
+  .legal a{color:#b4b4b4}
+  /* side drawer for the code + status */
+  .drawer{position:fixed;inset:0 auto 0 0;width:min(560px,92vw);background:#171717;transform:translateX(-100%);transition:transform .25s ease;z-index:20;display:flex;flex-direction:column;border-right:1px solid #2a2a2a}
+  body.open .drawer{transform:none}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+  body.open .scrim{opacity:1;pointer-events:auto}
+  .drawer h2{font-size:1rem;font-weight:600;padding:20px 20px 4px}
+  .status{font-size:.85rem;color:#9b9b9b;padding:0 20px 10px}.status b{color:#5ee0a0;font-weight:600}
+  .drawer p{font-size:.85rem;color:#9b9b9b;padding:0 20px 12px;line-height:1.5}
+  pre{flex:1;overflow:auto;margin:0 16px 16px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.55;color:#cfcfcf}
 </style>
 </head>
 <body>
-<header>
-  <div class="logo">67<span>.ai</span></div>
+<div class="scrim" onclick="document.body.classList.remove('open')"></div>
+<aside class="drawer">
+  <h2>67.ai</h2>
   <div class="status" id="status">Training neural net…</div>
-</header>
-<div class="wrap">
-  <div class="chat">
-    <div class="messages" id="messages"></div>
-    <form id="form"><input id="input" autocomplete="off" placeholder="Try: how's your day? · 12 times 7 · what is gravity? · 1 xor 0" /><button>Send</button></form>
-  </div>
-  <div class="code">
-    <h2>ai_roots.py</h2>
-    <p>The roots of 67.ai: a from-scratch XOR neural network in pure Python. The chat runs the same network, ported to JavaScript and trained live in your browser.</p>
-    <pre><code>import math, random
+  <p>The roots: ai_roots.py, a from-scratch XOR neural network in pure Python. The chat runs the same network in your browser, plus small talk, math, facts, and finance tools. Type "help" in the chat.</p>
+  <pre><code>import math, random
 
 random.seed(42)
 data = [([0, 0], 0), ([0, 1], 1), ([1, 0], 1), ([1, 1], 0)]
@@ -81,8 +86,22 @@ for x, y in data:
     o = forward(x)[1]
     print(f&quot;  {x} -&gt; {o:.4f}  (rounded {round(o)}, target {y})&quot;)
 </code></pre>
+</aside>
+<header>
+  <button class="menu" aria-label="Menu" onclick="document.body.classList.toggle('open')"><span></span><span></span></button>
+  <div class="brand">67.ai <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+</header>
+<main>
+  <div class="hero"><h1>Where should we begin?</h1></div>
+  <div class="messages" id="messages"></div>
+  <div class="composer">
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="Ask anything" />
+      <div class="row"><button class="send" aria-label="Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+    </form>
   </div>
-</div>
+  <div class="legal">67.ai is a tiny AI built from scratch. It can make mistakes, and its currency rates are fixed examples, not live data.</div>
+</main>
 <script>
 // Same 2-3-1 network as ai_roots.py, trained in the browser
 const data=[[[0,0],0],[[0,1],1],[[1,0],1],[[1,1],0]], H=3, lr=0.5;
@@ -95,7 +114,7 @@ train(10000);
 document.getElementById('status').innerHTML='Neural net <b>trained</b> · loss '+finalLoss.toFixed(6);
 
 const box=document.getElementById('messages');
-function add(text,who){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; box.appendChild(d); box.scrollTop=box.scrollHeight; }
+function add(text,who){ if(who==='user') document.body.classList.add('chatting'); const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; box.appendChild(d); box.scrollTop=box.scrollHeight; }
 // ===== 67.ai mini language layer: small talk, math, facts =====
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const SMALLTALK=[
@@ -288,7 +307,6 @@ function reply(t){
   if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• Money: type \"finance\" for interest, loans, savings, tax, conversions\n• show the table, retrain";
   return "Hmm, I don't know that one yet. I'm still a young AI. Try a math problem, a school question like \"what is gravity?\", or \"1 xor 0\". Type \"help\" for more.";
 }
-add("Hi, I'm 67.ai 👋 I'm a neural network built from scratch. Ask me how my day is, give me a math problem, ask a school question, type \"finance\" for money tools, or try \"1 xor 0\".","bot");
 document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return; add(t,'user'); i.value=''; setTimeout(()=>add(reply(t),'bot'),300); });
 </script>
 </body>
