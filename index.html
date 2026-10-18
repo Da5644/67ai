@@ -58,6 +58,19 @@
   .unlock button{background:#3b6fd4;color:#fff;border:0;border-radius:10px;padding:0 14px;font-weight:600;cursor:pointer}
   .umsg{font-size:.8rem;margin-top:8px;min-height:1em}
   form.locked{opacity:.55}
+  .signin{background:none;border:1px solid #3a3a3a;color:#ececec;border-radius:999px;padding:6px 12px;font-size:.82rem;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .signin:hover{border-color:#666}
+  .who{position:relative;display:none;align-items:center;gap:7px;cursor:pointer;font-size:.85rem;color:#ececec;background:none;border:0}
+  body.signed .who{display:flex} body.signed .signin{display:none}
+  .who img{width:26px;height:26px;border-radius:50%;background:#333}
+  .whomenu{position:absolute;top:36px;right:0;background:#1c1c1c;border:1px solid #333;border-radius:12px;padding:6px;display:none;min-width:150px;z-index:15;text-align:left}
+  .who.open .whomenu{display:block}
+  .whomenu a,.whomenu button{display:block;width:100%;background:none;border:0;color:#ececec;text-align:left;padding:9px 10px;border-radius:8px;font-size:.88rem;cursor:pointer;text-decoration:none;font-family:inherit}
+  .whomenu a:hover,.whomenu button:hover{background:#2a2a2a}
+  .lmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:30;padding:20px}
+  body.login .lmodal{display:flex}
+  .lprev{display:none;align-items:center;gap:10px;margin:12px 0 4px;text-align:left}.lprev img{width:40px;height:40px;border-radius:50%}
+  @media (max-width:430px){ .tokens{display:none} body.signed .who span{display:none} }
 </style>
 </head>
 <body>
@@ -105,6 +118,15 @@ for x, y in data:
     print(f&quot;  {x} -&gt; {o:.4f}  (rounded {round(o)}, target {y})&quot;)
 </code></pre>
 </aside>
+<div class="lmodal" onclick="if(event.target===this)closeLogin()">
+  <div class="card">
+    <button class="x" onclick="closeLogin()" aria-label="Close">×</button>
+    <h3>Sign in with GitHub</h3>
+    <p style="margin-top:8px">Type your GitHub username to show your profile on 67.ai.</p>
+    <div class="unlock"><input id="ghUser" placeholder="GitHub username" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')signIn()"><button onclick="signIn()">Sign in</button></div>
+    <div class="umsg" id="lmsg"></div>
+  </div>
+</div>
 <div class="modal" onclick="if(event.target===this)closeSub()">
   <div class="card">
     <button class="x" onclick="closeSub()" aria-label="Close">×</button>
@@ -113,7 +135,7 @@ for x, y in data:
     <ul><li>✓ Unlimited messages</li><li>✓ All tools: math, facts, finance, XOR</li><li>✓ Support an AI built from scratch</li></ul>
     <!-- Replace this box with your Cash App QR code image, e.g. <img src="cashapp-qr.png" width="150"> -->
     <div class="qr">Cash App QR code goes here</div>
-    <div class="cash">Send $1.99 to <span id="cashtag">$YOUR_CASHAPP_TAG</span> on Cash App</div>
+    <div class="cash">Send $1.99 to <span id="cashtag">$justdavid67</span> on Cash App</div>
     <p>Send $1.99 each month to unlock premium features. Put your email in the payment note, and you'll get an unlock code to enter below.</p>
     <div class="unlock"><input id="code" placeholder="Unlock code" autocomplete="off"><button onclick="redeem()">Unlock</button></div>
     <div class="umsg" id="umsg"></div>
@@ -124,6 +146,9 @@ for x, y in data:
   <div class="brand">67.ai <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
   <div class="spacer"></div>
   <span class="tokens" id="tokens"></span>
+  <button class="signin" id="signinBtn" onclick="openLogin()"><svg width="15" height="15" viewBox="0 0 16 16" fill="#ececec"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Sign in</button>
+  <button class="who" id="who" onclick="this.classList.toggle('open');event.stopPropagation()"><img id="whoImg" alt=""><span id="whoName"></span>
+    <div class="whomenu"><a id="whoLink" target="_blank" rel="noopener">View GitHub profile</a><button onclick="signOut()">Sign out</button></div></button>
   <button class="pro" id="proBtn" onclick="openSub()">Get Premium</button>
 </header>
 <main>
@@ -334,19 +359,20 @@ function reply(t){
   if(m){ const a=+m[1], b=+m[2], o=forward([a,b])[1];
     return `${a} XOR ${b} → ${o.toFixed(4)}, so my answer is ${Math.round(o)}.\n(That came straight from my 3 hidden neurons.)`; }
   if(/^(hi|hey|hello|yo|sup)\b/.test(s)) return "Hey! I'm 67.ai. My brain is tiny but it's mine. Ask me something like \"0 xor 1\".";
-  if(/67|name|who are you/.test(s)) return "I'm 67.ai, named after Mr67. I was built from scratch, starting with the code on the right.";
+  if(/67|(your|ur) name|who are you/.test(s)) return "I'm 67.ai, named after Mr67. I was built from scratch, starting with the code on the right.";
   if(/xor|how.*work|neural|network|brain/.test(s)) return "I'm a 2-layer network: 2 inputs, 3 hidden neurons, 1 output, all sigmoid. I learned XOR with hand-written backprop over 10,000 epochs. Current loss: "+finalLoss.toFixed(6)+".";
   if(/table|all/.test(s)) return data.map(([x])=>`${x[0]} XOR ${x[1]} → ${forward(x)[1].toFixed(4)}`).join('\n');
   if(/retrain|train again|reset/.test(s)){ w1=Array.from({length:H},()=>[r(),r()]); b1=Array(H).fill(0); w2=Array.from({length:H},r); b2=0; train(10000);
     document.getElementById('status').innerHTML='Neural net <b>retrained</b> · loss '+finalLoss.toFixed(6); return "Retrained from fresh random weights. New loss: "+finalLoss.toFixed(6)+"."; }
   if(/^(tokens|how many tokens|my tokens|balance)\??$/.test(s)){ const u=usage(); return u.premiumUntil?'You have Premium, so your messages are unlimited.':`You have ${u.tokens} free tokens left. They refresh to ${FREE_TOKENS} every 3 weeks. Premium is unlimited for $1.99/month.`; }
   if(/premium|subscribe|subscription|upgrade|cash ?app/.test(s)){ setTimeout(openSub,400); return `Premium is $1.99/month for unlimited messages. Send $1.99 to ${CASHAPP_TAG} on Cash App, and you'll get an unlock code to enter.`; }
+  if(/who am i|my name|am i signed in/.test(s)){ const u=userStore.get(); return u?`You're signed in as @${u.login}${u.name?` (${u.name})`:''}.`:"You're not signed in. Tap Sign in at the top to connect your GitHub username."; }
   if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• Money: type \"finance\" for interest, loans, savings, tax, conversions\n• show the table, retrain";
   return "Hmm, I don't know that one yet. I'm still a young AI. Try a math problem, a school question like \"what is gravity?\", or \"1 xor 0\". Type \"help\" for more.";
 }
 
 // ===== Tokens + subscription =====
-const CASHAPP_TAG='$YOUR_CASHAPP_TAG';      // replace with your real $cashtag
+const CASHAPP_TAG='$justdavid67';      // replace with your real $cashtag
 const UNLOCK_CODES=['CHANGE-ME-67'];        // replace with the code(s) you give paying subscribers
 const FREE_TOKENS=30, REFRESH_MS=21*24*60*60*1000, PREMIUM_MS=31*24*60*60*1000;
 const store={ get(){ try{return JSON.parse(localStorage.getItem('67ai_usage'))||{};}catch(e){return {};} }, set(v){ try{localStorage.setItem('67ai_usage',JSON.stringify(v));}catch(e){} } };
@@ -365,6 +391,26 @@ function redeem(){ const c=document.getElementById('code').value.trim().toUpperC
   else { m.style.color='#ff6b6b'; m.textContent="That code didn't work. Double-check it or message us."; } }
 document.getElementById('cashtag').textContent=CASHAPP_TAG;
 renderTokens();
+
+// ===== GitHub username sign-in (public profile only, not verified) =====
+const userStore={ get(){ try{return JSON.parse(localStorage.getItem('67ai_user'));}catch(e){return null;} }, set(v){ try{ v?localStorage.setItem('67ai_user',JSON.stringify(v)):localStorage.removeItem('67ai_user'); }catch(e){} } };
+function renderUser(){ const u=userStore.get();
+  document.body.classList.toggle('signed',!!u);
+  if(u){ document.getElementById('whoImg').src=u.avatar; document.getElementById('whoName').textContent=u.login; document.getElementById('whoLink').href=u.url; document.getElementById('who').title=u.name||u.login; } }
+function openLogin(){ document.body.classList.add('login'); document.getElementById('lmsg').textContent=''; setTimeout(()=>document.getElementById('ghUser').focus(),50); }
+function closeLogin(){ document.body.classList.remove('login'); }
+async function signIn(){ const name=document.getElementById('ghUser').value.trim().replace(/^@/,''), m=document.getElementById('lmsg');
+  if(!/^[a-z\d](?:[a-z\d-]{0,38})$/i.test(name)){ m.style.color='#ff6b6b'; m.textContent="That doesn't look like a GitHub username."; return; }
+  m.style.color='#9b9b9b'; m.textContent='Looking you up…';
+  try{ const r=await fetch('https://api.github.com/users/'+encodeURIComponent(name));
+    if(r.status===404){ m.style.color='#ff6b6b'; m.textContent='No GitHub user with that name.'; return; }
+    if(!r.ok){ m.style.color='#ff6b6b'; m.textContent=r.status===403?'GitHub is rate-limiting requests right now. Try again in a bit.':'GitHub lookup failed. Try again.'; return; }
+    const d=await r.json(); userStore.set({login:d.login,name:d.name||'',avatar:d.avatar_url,url:d.html_url}); renderUser(); closeLogin();
+    add(`Welcome, ${d.name||d.login}! 👋 You're signed in as @${d.login}.`,'bot');
+  }catch(e){ m.style.color='#ff6b6b'; m.textContent="Couldn't reach GitHub. Check your connection."; } }
+function signOut(){ const u=userStore.get(); userStore.set(null); renderUser(); document.getElementById('who').classList.remove('open'); if(u) add(`Signed out @${u.login}. See you later!`,'bot'); }
+document.addEventListener('click',()=>document.getElementById('who').classList.remove('open'));
+renderUser();
 document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return;
   add(t,'user'); i.value='';
   if(!spendToken()){ const u=usage(), days=Math.ceil((u.resetAt-Date.now())/86400000);
