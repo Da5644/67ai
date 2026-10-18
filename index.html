@@ -58,19 +58,24 @@
   .unlock button{background:#3b6fd4;color:#fff;border:0;border-radius:10px;padding:0 14px;font-weight:600;cursor:pointer}
   .umsg{font-size:.8rem;margin-top:8px;min-height:1em}
   form.locked{opacity:.55}
-  .signin{background:none;border:1px solid #3a3a3a;color:#ececec;border-radius:999px;padding:6px 12px;font-size:.82rem;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .signin,.who,.pro{white-space:nowrap}
+  .signin{background:none;border:1px solid #3a3a3a;color:#ececec;border-radius:999px;padding:6px 12px;font-size:.82rem;cursor:pointer;font-family:inherit}
   .signin:hover{border-color:#666}
-  .who{position:relative;display:none;align-items:center;gap:7px;cursor:pointer;font-size:.85rem;color:#ececec;background:none;border:0}
+  .who{position:relative;display:none;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;color:#ececec;background:none;border:1px solid #2f5f45;border-radius:999px;padding:6px 12px;font-family:inherit}
+  .who i{width:7px;height:7px;border-radius:50%;background:#5ee0a0;display:inline-block}
   body.signed .who{display:flex} body.signed .signin{display:none}
-  .who img{width:26px;height:26px;border-radius:50%;background:#333}
-  .whomenu{position:absolute;top:36px;right:0;background:#1c1c1c;border:1px solid #333;border-radius:12px;padding:6px;display:none;min-width:150px;z-index:15;text-align:left}
+  .whomenu{position:absolute;top:38px;right:0;background:#1c1c1c;border:1px solid #333;border-radius:12px;padding:6px;display:none;min-width:150px;z-index:15;text-align:left}
   .who.open .whomenu{display:block}
-  .whomenu a,.whomenu button{display:block;width:100%;background:none;border:0;color:#ececec;text-align:left;padding:9px 10px;border-radius:8px;font-size:.88rem;cursor:pointer;text-decoration:none;font-family:inherit}
-  .whomenu a:hover,.whomenu button:hover{background:#2a2a2a}
+  .whomenu button{display:block;width:100%;background:none;border:0;color:#ececec;text-align:left;padding:9px 10px;border-radius:8px;font-size:.88rem;cursor:pointer;font-family:inherit}
+  .whomenu button:hover{background:#2a2a2a} .whomenu .danger{color:#ff6b6b}
   .lmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:30;padding:20px}
   body.login .lmodal{display:flex}
-  .lprev{display:none;align-items:center;gap:10px;margin:12px 0 4px;text-align:left}.lprev img{width:40px;height:40px;border-radius:50%}
-  @media (max-width:430px){ .tokens{display:none} body.signed .who span{display:none} }
+  .tabs{display:flex;background:#262626;border-radius:12px;padding:4px;margin:14px 0 14px}
+  .tabs button{flex:1;background:none;border:0;color:#9b9b9b;padding:9px;border-radius:9px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.9rem}
+  .tabs button.on{background:#3a3a3a;color:#fff}
+  .pin{width:100%;background:#262626;border:1px solid #3a3a3a;border-radius:12px;padding:12px;color:#fff;font-size:1.4rem;letter-spacing:.5em;text-align:center;margin-bottom:10px;font-family:inherit}
+  .go{width:100%;background:#3b6fd4;color:#fff;border:0;border-radius:12px;padding:12px;font-weight:600;cursor:pointer;font-size:.95rem;font-family:inherit}
+  @media (max-width:430px){ .tokens{display:none} }
 </style>
 </head>
 <body>
@@ -121,9 +126,12 @@ for x, y in data:
 <div class="lmodal" onclick="if(event.target===this)closeLogin()">
   <div class="card">
     <button class="x" onclick="closeLogin()" aria-label="Close">×</button>
-    <h3>Sign in with GitHub</h3>
-    <p style="margin-top:8px">Type your GitHub username to show your profile on 67.ai.</p>
-    <div class="unlock"><input id="ghUser" placeholder="GitHub username" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')signIn()"><button onclick="signIn()">Sign in</button></div>
+    <h3>Your 67.ai account</h3>
+    <div class="tabs"><button id="tabIn" class="on" onclick="setTab('in')">Sign in</button><button id="tabNew" onclick="setTab('new')">Create account</button></div>
+    <p id="pinHelp">Enter your PIN to sign in.</p>
+    <input class="pin" id="pin1" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter')submitPin()">
+    <input class="pin" id="pin2" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN" autocomplete="off" style="display:none" onkeydown="if(event.key==='Enter')submitPin()">
+    <button class="go" id="pinGo" onclick="submitPin()">Sign in</button>
     <div class="umsg" id="lmsg"></div>
   </div>
 </div>
@@ -146,9 +154,9 @@ for x, y in data:
   <div class="brand">67.ai <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
   <div class="spacer"></div>
   <span class="tokens" id="tokens"></span>
-  <button class="signin" id="signinBtn" onclick="openLogin()"><svg width="15" height="15" viewBox="0 0 16 16" fill="#ececec"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Sign in</button>
-  <button class="who" id="who" onclick="this.classList.toggle('open');event.stopPropagation()"><img id="whoImg" alt=""><span id="whoName"></span>
-    <div class="whomenu"><a id="whoLink" target="_blank" rel="noopener">View GitHub profile</a><button onclick="signOut()">Sign out</button></div></button>
+  <button class="signin" id="signinBtn" onclick="openLogin()">Sign in</button>
+  <div class="who" id="who" role="button" tabindex="0" onclick="this.classList.toggle('open');event.stopPropagation()"><i></i>Signed in
+    <div class="whomenu"><button onclick="signOut()">Sign out</button><button class="danger" onclick="deleteAccount()">Delete account</button></div></div>
   <button class="pro" id="proBtn" onclick="openSub()">Get Premium</button>
 </header>
 <main>
@@ -366,7 +374,7 @@ function reply(t){
     document.getElementById('status').innerHTML='Neural net <b>retrained</b> · loss '+finalLoss.toFixed(6); return "Retrained from fresh random weights. New loss: "+finalLoss.toFixed(6)+"."; }
   if(/^(tokens|how many tokens|my tokens|balance)\??$/.test(s)){ const u=usage(); return u.premiumUntil?'You have Premium, so your messages are unlimited.':`You have ${u.tokens} free tokens left. They refresh to ${FREE_TOKENS} every 3 weeks. Premium is unlimited for $1.99/month.`; }
   if(/premium|subscribe|subscription|upgrade|cash ?app/.test(s)){ setTimeout(openSub,400); return `Premium is $1.99/month for unlimited messages. Send $1.99 to ${CASHAPP_TAG} on Cash App, and you'll get an unlock code to enter.`; }
-  if(/who am i|my name|am i signed in/.test(s)){ const u=userStore.get(); return u?`You're signed in as @${u.login}${u.name?` (${u.name})`:''}.`:"You're not signed in. Tap Sign in at the top to connect your GitHub username."; }
+  if(/who am i|am i (signed|logged) in|my account|signed in\?|logged in\?/.test(s)) return isSignedIn()?"You're signed in to your 67.ai account on this browser.":(acct.get()?"You're not signed in right now. Tap Sign in at the top and enter your PIN.":"You don't have an account yet. Tap Sign in, then Create account to set a PIN.");
   if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• Money: type \"finance\" for interest, loans, savings, tax, conversions\n• show the table, retrain";
   return "Hmm, I don't know that one yet. I'm still a young AI. Try a math problem, a school question like \"what is gravity?\", or \"1 xor 0\". Type \"help\" for more.";
 }
@@ -392,25 +400,34 @@ function redeem(){ const c=document.getElementById('code').value.trim().toUpperC
 document.getElementById('cashtag').textContent=CASHAPP_TAG;
 renderTokens();
 
-// ===== GitHub username sign-in (public profile only, not verified) =====
-const userStore={ get(){ try{return JSON.parse(localStorage.getItem('67ai_user'));}catch(e){return null;} }, set(v){ try{ v?localStorage.setItem('67ai_user',JSON.stringify(v)):localStorage.removeItem('67ai_user'); }catch(e){} } };
-function renderUser(){ const u=userStore.get();
-  document.body.classList.toggle('signed',!!u);
-  if(u){ document.getElementById('whoImg').src=u.avatar; document.getElementById('whoName').textContent=u.login; document.getElementById('whoLink').href=u.url; document.getElementById('who').title=u.name||u.login; } }
-function openLogin(){ document.body.classList.add('login'); document.getElementById('lmsg').textContent=''; setTimeout(()=>document.getElementById('ghUser').focus(),50); }
+// ===== PIN account (stored in this browser) =====
+const acct={ get(){ try{return JSON.parse(localStorage.getItem('67ai_account'));}catch(e){return null;} }, set(v){ try{ v?localStorage.setItem('67ai_account',JSON.stringify(v)):localStorage.removeItem('67ai_account'); }catch(e){} } };
+const sess={ on(){ try{return localStorage.getItem('67ai_session')==='1';}catch(e){return false;} }, set(v){ try{ v?localStorage.setItem('67ai_session','1'):localStorage.removeItem('67ai_session'); }catch(e){} } };
+async function hashPin(pin,salt){ const data=new TextEncoder().encode(salt+':'+pin);
+  if(window.crypto&&crypto.subtle){ const b=await crypto.subtle.digest('SHA-256',data); return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
+  let h1=5381; for(const c of data) h1=((h1<<5)+h1+c)>>>0; return 'djb2-'+h1.toString(16); }
+let tab='in', fails=0, lockUntil=0;
+function setTab(t){ tab=t; const isNew=t==='new';
+  document.getElementById('tabIn').classList.toggle('on',!isNew); document.getElementById('tabNew').classList.toggle('on',isNew);
+  document.getElementById('pin2').style.display=isNew?'block':'none'; document.getElementById('pinGo').textContent=isNew?'Create account':'Sign in';
+  document.getElementById('pinHelp').textContent=isNew?(acct.get()?'This browser already has an account. Creating a new one replaces it.':'Pick a 4 to 6 digit PIN.'):(acct.get()?'Enter your PIN to sign in.':'No account yet on this browser. Create one first.');
+  document.getElementById('lmsg').textContent=''; document.getElementById('pin1').value=''; document.getElementById('pin2').value=''; }
+function openLogin(){ document.body.classList.add('login'); setTab(acct.get()?'in':'new'); setTimeout(()=>document.getElementById('pin1').focus(),50); }
 function closeLogin(){ document.body.classList.remove('login'); }
-async function signIn(){ const name=document.getElementById('ghUser').value.trim().replace(/^@/,''), m=document.getElementById('lmsg');
-  if(!/^[a-z\d](?:[a-z\d-]{0,38})$/i.test(name)){ m.style.color='#ff6b6b'; m.textContent="That doesn't look like a GitHub username."; return; }
-  m.style.color='#9b9b9b'; m.textContent='Looking you up…';
-  try{ const r=await fetch('https://api.github.com/users/'+encodeURIComponent(name));
-    if(r.status===404){ m.style.color='#ff6b6b'; m.textContent='No GitHub user with that name.'; return; }
-    if(!r.ok){ m.style.color='#ff6b6b'; m.textContent=r.status===403?'GitHub is rate-limiting requests right now. Try again in a bit.':'GitHub lookup failed. Try again.'; return; }
-    const d=await r.json(); userStore.set({login:d.login,name:d.name||'',avatar:d.avatar_url,url:d.html_url}); renderUser(); closeLogin();
-    add(`Welcome, ${d.name||d.login}! 👋 You're signed in as @${d.login}.`,'bot');
-  }catch(e){ m.style.color='#ff6b6b'; m.textContent="Couldn't reach GitHub. Check your connection."; } }
-function signOut(){ const u=userStore.get(); userStore.set(null); renderUser(); document.getElementById('who').classList.remove('open'); if(u) add(`Signed out @${u.login}. See you later!`,'bot'); }
+function renderAcct(){ document.body.classList.toggle('signed',!!acct.get()&&sess.on()); }
+const isSignedIn=()=>!!acct.get()&&sess.on();
+async function submitPin(){ const p1=document.getElementById('pin1').value.trim(), p2=document.getElementById('pin2').value.trim(), m=document.getElementById('lmsg'); const err=t=>{ m.style.color='#ff6b6b'; m.textContent=t; };
+  if(!/^\d{4,6}$/.test(p1)) return err('Your PIN needs to be 4 to 6 digits.');
+  if(tab==='new'){ if(p1!==p2) return err("Those PINs don't match.");
+    const salt=Math.random().toString(36).slice(2,10); acct.set({salt,hash:await hashPin(p1,salt),created:Date.now()}); sess.set(true); renderAcct(); closeLogin(); add("Account created, and you're signed in! 🎉",'bot'); return; }
+  const a=acct.get(); if(!a) return err('No account on this browser yet. Tap Create account.');
+  if(Date.now()<lockUntil) return err(`Too many tries. Wait ${Math.ceil((lockUntil-Date.now())/1000)} seconds.`);
+  if(await hashPin(p1,a.salt)===a.hash){ fails=0; sess.set(true); renderAcct(); closeLogin(); add("Welcome back! You're signed in. 👋",'bot'); }
+  else { fails++; if(fails>=5){ lockUntil=Date.now()+30000; fails=0; return err('Wrong PIN 5 times. Locked for 30 seconds.'); } err(`Wrong PIN. ${5-fails} tr${5-fails===1?'y':'ies'} left before a short lockout.`); } }
+function signOut(){ sess.set(false); renderAcct(); document.getElementById('who').classList.remove('open'); add("You're signed out. See you later!",'bot'); }
+function deleteAccount(){ if(!confirm('Delete your 67.ai account on this browser?')) return; acct.set(null); sess.set(false); renderAcct(); document.getElementById('who').classList.remove('open'); add('Your account was deleted from this browser.','bot'); }
 document.addEventListener('click',()=>document.getElementById('who').classList.remove('open'));
-renderUser();
+renderAcct();
 document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return;
   add(t,'user'); i.value='';
   if(!spendToken()){ const u=usage(), days=Math.ceil((u.resetAt-Date.now())/86400000);
