@@ -194,7 +194,75 @@ function mathReply(s){
   catch(e){ return e==='div0'?"You can't divide by zero. Even neural networks know that one!":null; }
 }
 
+// ===== 67.ai finance brain (rule-based, no live data) =====
+let financeMode=false;
+const money=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const nums=s=>s.replace(/,(?=\d{3})/g,'');
+function getRate(s){ const m=s.match(/(\d+(?:\.\d+)?)\s*(?:%|percent)/); return m?+m[1]/100:null; }
+function getYears(s){ let m=s.match(/(\d+(?:\.\d+)?)\s*(?:years?|yrs?)\b/); if(m) return +m[1]; m=s.match(/(\d+(?:\.\d+)?)\s*months?\b(?!ly)/); return m?+m[1]/12:null; }
+function getAmounts(s){ // dollar-ish amounts, excluding % and year/month numbers
+  const out=[]; const re=/\$?\s*(\d+(?:\.\d+)?)\s*(k\b|thousand|million)?(?!\s*(?:%|percent|years?|yrs?|months?\b|times))/g; let m;
+  while((m=re.exec(s))){ let v=+m[1]; if(m[2]){ v*= /million/.test(m[2])?1e6:1e3; } out.push({v,i:m.index,raw:m[0]}); } return out; }
+function compoundN(s){ if(/daily/.test(s)) return [365,'daily']; if(/monthly/.test(s)) return [12,'monthly']; if(/quarterly/.test(s)) return [4,'quarterly']; if(/semi|twice a year/.test(s)) return [2,'semiannually']; return [1,'annually']; }
+
+const FX={usd:1, eur:0.92, gbp:0.79, jpy:150, mxn:18, cad:1.37, inr:84, cny:7.2, aud:1.52, chf:0.88}; // sample fixed rates per 1 USD
+const FXNAMES={usd:/^(usd|dollars?|us dollars?|\$)$/, eur:/^(eur|euros?|€)$/, gbp:/^(gbp|british pounds?|pounds? sterling|£)$/, jpy:/^(jpy|yen|¥)$/, mxn:/^(mxn|pesos?|mexican pesos?)$/, cad:/^(cad|canadian dollars?)$/, inr:/^(inr|rupees?)$/, cny:/^(cny|yuan|rmb)$/, aud:/^(aud|australian dollars?)$/, chf:/^(chf|swiss francs?|francs?)$/};
+const fxCode=w=>{ w=w.trim(); for(const k in FXNAMES) if(FXNAMES[k].test(w)) return k; return null; };
+const UNITS=[ // [regexFrom, regexTo, factor, fromLabel, toLabel]
+ [/^(miles?|mi)$/,/^(km|kilometers?|kilometres?)$/,1.609344,'miles','km'],
+ [/^(lbs?|pounds?)$/,/^(kg|kilograms?|kilos?)$/,0.45359237,'lb','kg'],
+ [/^(inch(es)?|in)$/,/^(cm|centimeters?|centimetres?)$/,2.54,'inches','cm'],
+ [/^(feet|foot|ft)$/,/^(m|meters?|metres?)$/,0.3048,'feet','m'],
+ [/^(gallons?|gal)$/,/^(l|liters?|litres?)$/,3.785411784,'gallons','L'],
+ [/^(ounces?|oz)$/,/^(g|grams?)$/,28.349523125,'oz','g'],
+ [/^(yards?|yd)$/,/^(m|meters?|metres?)$/,0.9144,'yards','m'],
+];
+function convert(s){
+  const m=s.match(/(-?\d+(?:\.\d+)?)\s*([a-z$€£¥°]+(?:\s[a-z]+)?)\s+(?:to|in|into)\s+([a-z$€£¥°]+(?:\s[a-z]+)?)\s*\??$/); if(!m) return null;
+  const v=+m[1], from=m[2].trim(), to=m[3].trim();
+  if(/^(°?f|fahrenheit)$/.test(from)&&/^(°?c|celsius)$/.test(to)) return `${v}°F = ${+((v-32)*5/9).toFixed(2)}°C`;
+  if(/^(°?c|celsius)$/.test(from)&&/^(°?f|fahrenheit)$/.test(to)) return `${v}°C = ${+(v*9/5+32).toFixed(2)}°F`;
+  for(const [a,b,f,la,lb] of UNITS){ if(a.test(from)&&b.test(to)) return `${v} ${la} = ${+(v*f).toFixed(3)} ${lb}`; if(b.test(from)&&a.test(to)) return `${v} ${lb} = ${+(v/f).toFixed(3)} ${la}`; }
+  const fa=fxCode(from)|| (from==='pounds'?'gbp':null), fb=fxCode(to)||(to==='pounds'?'gbp':null);
+  if(fa&&fb){ const out=v/FX[fa]*FX[fb]; return `${v} ${fa.toUpperCase()} ≈ ${out.toLocaleString('en-US',{maximumFractionDigits:2})} ${fb.toUpperCase()}\n(Using fixed sample rates, not live market data. Check a bank for today's rate.)`; }
+  return null;
+}
+
+function financeReply(raw){
+  const s=nums(raw.toLowerCase().trim());
+  if(/^(finance|money|financial)( mode)?( on)?$|^(enter|start|switch to) (finance|financial|money) mode/.test(s)){ financeMode=true; document.getElementById('status').innerHTML='<b>💰 Finance mode</b> · type "exit finance" to leave'; return "💰 Finance mode on! Try:\n• simple interest on $1000 at 5% for 3 years\n• $5000 at 6% compounded monthly for 10 years\n• monthly payment on a $20000 loan at 7% for 5 years\n• how long to save $10000 at $300 a month\n• 8% tax on $45\n• 20% tip on $60 · 25% off $80\n• 100 usd to eur · 10 miles to km"; }
+  if(/exit finance|leave finance|finance (mode )?off|normal mode/.test(s)){ financeMode=false; document.getElementById('status').innerHTML='Neural net <b>trained</b> · loss '+finalLoss.toFixed(6); return "Finance mode off. Back to chatting, math, facts, and XOR."; }
+
+  const c=convert(s); if(c) return c;
+  const rate=getRate(s), years=getYears(s), amts=getAmounts(s.replace(/(\d+(?:\.\d+)?)\s*(?:%|percent)/g,' '));
+
+  if(/simple interest/.test(s)&&amts.length&&rate!=null&&years){ const P=amts[0].v, I=P*rate*years;
+    return `Simple interest on ${money(P)} at ${+(rate*100).toFixed(3)}% for ${+years.toFixed(2)} years:\nInterest = P × r × t = ${money(I)}\nTotal = ${money(P+I)}`; }
+  if(/compound|compounded|interest|grow|invest/.test(s)&&amts.length&&rate!=null&&years&&!/loan|mortgage|payment/.test(s)){ const P=amts[0].v; const [n,lbl]=compoundN(s); const A=P*Math.pow(1+rate/n,n*years);
+    return `${money(P)} at ${+(rate*100).toFixed(3)}% compounded ${lbl} for ${+years.toFixed(2)} years:\nA = P(1 + r/n)^(nt) = ${money(A)}\nInterest earned = ${money(A-P)}`; }
+  if(/loan|mortgage|monthly payment|car payment|borrow/.test(s)&&amts.length&&rate!=null&&years){ const P=amts[0].v, r=rate/12, n=Math.round(years*12); const M=r===0?P/n:P*r/(1-Math.pow(1+r,-n));
+    return `Loan of ${money(P)} at ${+(rate*100).toFixed(3)}% for ${n} months:\nMonthly payment ≈ ${money(M)}\nTotal paid ≈ ${money(M*n)} (interest ≈ ${money(M*n-P)})\n(Estimate only. Real loans can add fees, taxes, or insurance.)`; }
+  if(/save|saving|savings|goal|reach/.test(s)&&/month|monthly|a week|weekly|per week/.test(s)&&amts.length>=2){
+    const contribM=s.match(/\$?\s*(\d+(?:\.\d+)?)\s*(?:k\b)?\s*(?:a|per|each|every)?\s*(month|week)|(monthly|weekly)\s*(?:of|contribution of)?\s*\$?\s*(\d+(?:\.\d+)?)/);
+    let C=null, per='month'; if(contribM){ C=+(contribM[1]||contribM[4]); per=(contribM[2]||contribM[3]||'month').replace('ly',''); }
+    const target=amts.map(a=>a.v).filter(v=>v!==C).sort((a,b)=>b-a)[0];
+    if(C&&target){ const startM=s.match(/(?:have|start(?:ing)? with|already)\s*\$?\s*(\d+(?:\.\d+)?)/); const start=startM?+startM[1]:0; const Cm=per==='week'?C*52/12:C; const r=rate?rate/12:0;
+      let months; if(target<=start) months=0; else if(!r) months=Math.ceil((target-start)/Cm); else { let bal=start; months=0; while(bal<target&&months<1200){ bal=bal*(1+r)+Cm; months++; } }
+      if(months>=1200) return "At that pace it would take over 100 years. Try a bigger contribution!";
+      return `Saving ${money(C)} a ${per}${rate?` at ${+(rate*100).toFixed(3)}% yearly interest`:''}${start?`, starting with ${money(start)}`:''}, you'd reach ${money(target)} in about ${months} months (${(months/12).toFixed(1)} years).`; } }
+  if(/tax/.test(s)&&rate!=null&&amts.length){ const P=amts[0].v, T=P*rate; return `${+(rate*100).toFixed(3)}% tax on ${money(P)} = ${money(T)}\nTotal with tax = ${money(P+T)}`; }
+  if(/\btip\b/.test(s)&&rate!=null&&amts.length){ const P=amts[0].v, T=P*rate; return `${+(rate*100).toFixed(3)}% tip on ${money(P)} = ${money(T)}\nTotal = ${money(P+T)}`; }
+  if(/\boff\b|discount|sale/.test(s)&&rate!=null&&amts.length){ const P=amts[0].v, D=P*rate; return `${+(rate*100).toFixed(3)}% off ${money(P)} saves you ${money(D)}\nYou pay ${money(P-D)}`; }
+  let pc=s.match(/(\d+(?:\.\d+)?)\s*(?:is|out of)\s*what (?:percent|%)\s*of\s*(\d+(?:\.\d+)?)|what (?:percent|%)\s*(?:of\s*)?(\d+(?:\.\d+)?)\s*is\s*(\d+(?:\.\d+)?)/);
+  if(pc){ const part=+(pc[1]||pc[4]), whole=+(pc[2]||pc[3]); return whole?`${part} is ${+(part/whole*100).toFixed(3)}% of ${whole}.`:"Can't take a percent of zero."; }
+  pc=s.match(/(?:percent(?:age)? (?:change|increase|decrease)|change) from\s*\$?(\d+(?:\.\d+)?)\s*to\s*\$?(\d+(?:\.\d+)?)/);
+  if(pc){ const a=+pc[1], b=+pc[2]; return a?`From ${a} to ${b} is a ${+(((b-a)/a)*100).toFixed(2)}% ${b>=a?'increase':'decrease'}.`:"Can't compute a change from zero."; }
+  if(financeMode&&/interest|loan|save|tax|tip|budget|percent/.test(s)) return "I need a few numbers for that. Example: \"monthly payment on a $20000 loan at 7% for 5 years\". Type \"finance\" to see all the formats.";
+  return null;
+}
+
 function brainReply(t){
+  { const f=financeReply(t); if(f) return f; }
   const s=t.toLowerCase().trim();
   for(const [re,answers] of SMALLTALK) if(re.test(s)) return pick(answers);
   const xm=s.match(/([01])\s*(?:xor|\^|⊕)\s*([01])/)||s.match(/^([01])\s*[, ]\s*([01])$/);
@@ -217,10 +285,10 @@ function reply(t){
   if(/table|all/.test(s)) return data.map(([x])=>`${x[0]} XOR ${x[1]} → ${forward(x)[1].toFixed(4)}`).join('\n');
   if(/retrain|train again|reset/.test(s)){ w1=Array.from({length:H},()=>[r(),r()]); b1=Array(H).fill(0); w2=Array.from({length:H},r); b2=0; train(10000);
     document.getElementById('status').innerHTML='Neural net <b>retrained</b> · loss '+finalLoss.toFixed(6); return "Retrained from fresh random weights. New loss: "+finalLoss.toFixed(6)+"."; }
-  if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• show the table, retrain";
+  if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• Money: type \"finance\" for interest, loans, savings, tax, conversions\n• show the table, retrain";
   return "Hmm, I don't know that one yet. I'm still a young AI. Try a math problem, a school question like \"what is gravity?\", or \"1 xor 0\". Type \"help\" for more.";
 }
-add("Hi, I'm 67.ai 👋 I'm a neural network built from scratch. Ask me how my day is, give me a math problem, ask a school question, or try \"1 xor 0\".","bot");
+add("Hi, I'm 67.ai 👋 I'm a neural network built from scratch. Ask me how my day is, give me a math problem, ask a school question, type \"finance\" for money tools, or try \"1 xor 0\".","bot");
 document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return; add(t,'user'); i.value=''; setTimeout(()=>add(reply(t),'bot'),300); });
 </script>
 </body>
