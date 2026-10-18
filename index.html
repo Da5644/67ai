@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>67.ai — Chat</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,"Segoe UI",Inter,Helvetica,Arial,sans-serif; background:#0b0b10; color:#e8e8f0; height:100vh; display:flex; flex-direction:column; }
+  header { padding:18px 28px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1d1d2a; }
+  .logo { font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
+  .logo span { color:#7c5cff; }
+  .status { font-size:.85rem; color:#7a7a92; }
+  .status b { color:#5ee0a0; font-weight:600; }
+  .wrap { flex:1; display:grid; grid-template-columns:1fr 1fr; min-height:0; }
+  .chat { display:flex; flex-direction:column; border-right:1px solid #1d1d2a; min-height:0; }
+  .messages { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width:80%; padding:12px 16px; border-radius:16px; line-height:1.5; white-space:pre-wrap; font-size:.95rem; }
+  .bot { background:#15151d; border:1px solid #25253a; align-self:flex-start; border-bottom-left-radius:4px; }
+  .user { background:#7c5cff; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+  form { display:flex; gap:10px; padding:16px 24px; border-top:1px solid #1d1d2a; }
+  input { flex:1; background:#15151d; border:1px solid #25253a; border-radius:999px; padding:12px 18px; color:#fff; font-size:.95rem; outline:none; }
+  input:focus { border-color:#7c5cff; }
+  button { background:#7c5cff; color:#fff; border:0; border-radius:999px; padding:0 22px; font-weight:600; cursor:pointer; }
+  button:hover { background:#6a4af0; }
+  .code { display:flex; flex-direction:column; min-height:0; }
+  .code h2 { font-size:1rem; padding:18px 24px 6px; }
+  .code p { font-size:.85rem; color:#7a7a92; padding:0 24px 12px; }
+  pre { flex:1; overflow:auto; margin:0 24px 24px; background:#101018; border:1px solid #25253a; border-radius:12px; padding:18px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.8rem; line-height:1.55; color:#cfcfe6; }
+  @media (max-width:860px){ .wrap{ grid-template-columns:1fr; grid-template-rows:60vh auto; } .chat{border-right:0;border-bottom:1px solid #1d1d2a;} pre{max-height:60vh;} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">67<span>.ai</span></div>
+  <div class="status" id="status">Training neural net…</div>
+</header>
+<div class="wrap">
+  <div class="chat">
+    <div class="messages" id="messages"></div>
+    <form id="form"><input id="input" autocomplete="off" placeholder="Try: how's your day? · 12 times 7 · what is gravity? · 1 xor 0" /><button>Send</button></form>
+  </div>
+  <div class="code">
+    <h2>ai_roots.py</h2>
+    <p>The roots of 67.ai: a from-scratch XOR neural network in pure Python. The chat runs the same network, ported to JavaScript and trained live in your browser.</p>
+    <pre><code>import math, random
+
+random.seed(42)
+data = [([0, 0], 0), ([0, 1], 1), ([1, 0], 1), ([1, 1], 0)]
+H, lr = 3, 0.5
+
+sig = lambda z: 1 / (1 + math.exp(-z))
+w1 = [[random.uniform(-1, 1) for _ in range(2)] for _ in range(H)]
+b1 = [0.0] * H
+w2 = [random.uniform(-1, 1) for _ in range(H)]
+b2 = 0.0
+
+def forward(x):
+    h = [sig(sum(w * xi for w, xi in zip(w1[j], x)) + b1[j]) for j in range(H)]
+    o = sig(sum(w * hj for w, hj in zip(w2, h)) + b2)
+    return h, o
+
+for epoch in range(1, 10001):
+    loss = 0.0
+    for x, y in data:
+        h, o = forward(x)
+        loss += (o - y) ** 2
+        d_o = 2 * (o - y) * o * (1 - o)
+        for j in range(H):
+            d_h = d_o * w2[j] * h[j] * (1 - h[j])
+            w2[j] -= lr * d_o * h[j]
+            for i in range(2):
+                w1[j][i] -= lr * d_h * x[i]
+            b1[j] -= lr * d_h
+        b2 -= lr * d_o
+    if epoch == 1 or epoch % 1000 == 0:
+        print(f&quot;Epoch {epoch:5d}  loss {loss / len(data):.6f}&quot;)
+
+print(&quot;\nFinal predictions:&quot;)
+for x, y in data:
+    o = forward(x)[1]
+    print(f&quot;  {x} -&gt; {o:.4f}  (rounded {round(o)}, target {y})&quot;)
+</code></pre>
+  </div>
+</div>
+<script>
+// Same 2-3-1 network as ai_roots.py, trained in the browser
+const data=[[[0,0],0],[[0,1],1],[[1,0],1],[[1,1],0]], H=3, lr=0.5;
+const sig=z=>1/(1+Math.exp(-z)); const r=()=>Math.random()*2-1;
+let w1=Array.from({length:H},()=>[r(),r()]), b1=Array(H).fill(0), w2=Array.from({length:H},r), b2=0, finalLoss=0;
+function forward(x){ const h=w1.map((w,j)=>sig(w[0]*x[0]+w[1]*x[1]+b1[j])); return [h, sig(h.reduce((s,hj,j)=>s+hj*w2[j],0)+b2)]; }
+function train(epochs){ for(let e=0;e<epochs;e++){ let loss=0; for(const [x,y] of data){ const [h,o]=forward(x); loss+=(o-y)**2; const dO=2*(o-y)*o*(1-o);
+  for(let j=0;j<H;j++){ const dH=dO*w2[j]*h[j]*(1-h[j]); w2[j]-=lr*dO*h[j]; w1[j][0]-=lr*dH*x[0]; w1[j][1]-=lr*dH*x[1]; b1[j]-=lr*dH; } b2-=lr*dO; } finalLoss=loss/4; } }
+train(10000);
+document.getElementById('status').innerHTML='Neural net <b>trained</b> · loss '+finalLoss.toFixed(6);
+
+const box=document.getElementById('messages');
+function add(text,who){ const d=document.createElement('div'); d.className='msg '+who; d.textContent=text; box.appendChild(d); box.scrollTop=box.scrollHeight; }
+// ===== 67.ai mini language layer: small talk, math, facts =====
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const SMALLTALK=[
+ [/how('?s| is| was) (your|ur) day|how are (you|u)|how('?s| is) it going|how you doing|what'?s up|\bwassup\b|\bsup\b/, ["Oh good! Just been practicing XOR. How about you?","Pretty good, thanks for asking! My neurons are feeling sharp today.","Oh good! Nothing beats a fresh set of trained weights. How's yours?"]],
+ [/^(hi|hey|hello|yo|hiya|howdy|good (morning|afternoon|evening))\b/, ["Hey! I'm 67.ai. Ask me a math problem, a fact, or something like \"1 xor 0\".","Hello! What do you want to know today?","Hi there! Try me with some math or a science question."]],
+ [/\b(i'?m|i am) (good|great|fine|ok|okay|doing well|alright)/, ["Glad to hear it!","Nice, love that.","Awesome! What should we do next?"]],
+ [/\b(i'?m|i am) (sad|tired|bored|not good|bad)/, ["Sorry to hear that. Want a fun fact to cheer you up?","That's rough. I'm here if you want to chat or do some math."]],
+ [/thank(s| you)|\bthx\b|\bty\b/, ["You're welcome!","Anytime!","Happy to help!"]],
+ [/\b(bye|goodbye|see (you|ya)|later|good ?night)\b/, ["Bye! Come back soon.","See you later!","Goodnight! My neurons will be here."]],
+ [/how old are you|your age/, ["I was born today, so I'm brand new!"]],
+ [/do you like|favorite|favourite/, ["My favorite thing is XOR, honestly. Also the number 67."]],
+ [/tell me a joke|joke/, ["Why did the neural network go to therapy? It had too many hidden layers.","Why was 6 afraid of 7? Because 7 8 9!","I told my computer a joke about UDP. I'm not sure it got it."]],
+ [/fun fact|tell me something/, ["Octopuses have three hearts!","Honey never spoils. People have found edible honey in ancient Egyptian tombs.","A day on Venus is longer than a year on Venus."]],
+];
+
+const FACTS=[
+ [/photosynthesis/,"Photosynthesis is how plants make food. They use sunlight, water, and carbon dioxide to make sugar, and they give off oxygen."],
+ [/gravity/,"Gravity is a force that pulls objects toward each other. It's why things fall down and why the Moon orbits Earth."],
+ [/\batoms?\b/,"An atom is the tiny building block of all matter. It has protons and neutrons in the center, called the nucleus, with electrons moving around it."],
+ [/\bcells?\b/,"A cell is the smallest living unit. All living things are made of cells, and your body has trillions of them."],
+ [/\bdna\b/,"DNA is the molecule that carries the instructions for how a living thing grows and works. It's shaped like a twisted ladder called a double helix."],
+ [/water cycle/,"The water cycle is how water moves around Earth: evaporation, then condensation into clouds, then precipitation like rain, then collection in oceans, lakes, and rivers."],
+ [/evaporation/,"Evaporation is when a liquid turns into a gas, like water drying up in the sun."],
+ [/states of matter|matter/,"The main states of matter are solid, liquid, and gas. Plasma is a fourth state, found in stars and lightning."],
+ [/planets?|solar system/,"There are 8 planets in our solar system: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune."],
+ [/biggest planet|largest planet/,"Jupiter is the biggest planet in our solar system."],
+ [/smallest planet/,"Mercury is the smallest planet in our solar system."],
+ [/closest (planet )?to the sun/,"Mercury is the closest planet to the Sun."],
+ [/hottest planet/,"Venus is the hottest planet, because its thick clouds trap heat."],
+ [/\bsun\b/,"The Sun is a star at the center of our solar system. It's a giant ball of hot gas, mostly hydrogen and helium, and light from it takes about 8 minutes to reach Earth."],
+ [/\bmoon\b/,"The Moon is Earth's natural satellite. It takes about 27 days to orbit Earth, and it has no air."],
+ [/speed of light/,"Light travels about 300,000 kilometers per second, or about 186,000 miles per second."],
+ [/boil/,"Water boils at 100°C (212°F) at sea level."],
+ [/freez/,"Water freezes at 0°C (32°F)."],
+ [/mammal/,"A mammal is a warm-blooded animal with hair or fur that feeds its babies milk. Dogs, whales, and humans are all mammals."],
+ [/reptile/,"A reptile is a cold-blooded animal with scales that usually lays eggs, like snakes, lizards, turtles, and crocodiles."],
+ [/amphibian/,"An amphibian lives part of its life in water and part on land, like frogs and salamanders."],
+ [/largest animal|biggest animal/,"The blue whale is the largest animal ever known to have lived."],
+ [/fastest animal|fastest land animal/,"The cheetah is the fastest land animal, reaching about 110 km/h (70 mph). The peregrine falcon is the fastest overall when it dives."],
+ [/how many bones/,"An adult human has 206 bones."],
+ [/heart/,"Your heart is a muscle that pumps blood through your body. It beats about 100,000 times a day."],
+ [/brain/,"Your brain controls your body, thoughts, and memories. It has billions of nerve cells called neurons. That's where neural networks like me got the idea!"],
+ [/continents?/,"There are 7 continents: Africa, Antarctica, Asia, Australia (Oceania), Europe, North America, and South America."],
+ [/oceans?/,"There are 5 oceans: Pacific, Atlantic, Indian, Southern, and Arctic. The Pacific is the biggest."],
+ [/(tallest|highest) mountain/,"Mount Everest is the tallest mountain above sea level, at about 8,849 meters (29,032 feet)."],
+ [/longest river/,"The Nile is usually called the longest river, at about 6,650 km, though some measurements give the title to the Amazon."],
+ [/largest country|biggest country/,"Russia is the largest country by area."],
+ [/capital of (the )?(united states|usa|us|america)/,"The capital of the United States is Washington, D.C."],
+ [/capital of france/,"The capital of France is Paris."],
+ [/capital of (the )?(uk|united kingdom|england)/,"The capital of the United Kingdom is London."],
+ [/capital of japan/,"The capital of Japan is Tokyo."],
+ [/capital of mexico/,"The capital of Mexico is Mexico City."],
+ [/capital of canada/,"The capital of Canada is Ottawa."],
+ [/capital of spain/,"The capital of Spain is Madrid."],
+ [/capital of italy/,"The capital of Italy is Rome."],
+ [/capital of germany/,"The capital of Germany is Berlin."],
+ [/capital of china/,"The capital of China is Beijing."],
+ [/capital of australia/,"The capital of Australia is Canberra."],
+ [/capital of brazil/,"The capital of Brazil is Brasília."],
+ [/capital of india/,"The capital of India is New Delhi."],
+ [/first president/,"George Washington was the first president of the United States."],
+ [/declaration of independence/,"The Declaration of Independence was signed in 1776. It said the 13 American colonies were free from British rule."],
+ [/how many states/,"The United States has 50 states."],
+ [/noun/,"A noun is a word for a person, place, thing, or idea, like \"dog,\" \"city,\" or \"happiness.\""],
+ [/\bverb/,"A verb is an action or being word, like \"run,\" \"jump,\" or \"is.\""],
+ [/adjective/,"An adjective describes a noun, like \"big,\" \"blue,\" or \"funny.\""],
+ [/adverb/,"An adverb describes a verb, adjective, or another adverb, often ending in -ly, like \"quickly\" or \"very.\""],
+ [/prime number/,"A prime number has exactly two factors: 1 and itself. Examples are 2, 3, 5, 7, 11, and 13."],
+ [/\bpi\b/,"Pi (π) is the ratio of a circle's circumference to its diameter, about 3.14159."],
+ [/fraction/,"A fraction shows part of a whole, like 1/2. The top number is the numerator, and the bottom is the denominator."],
+ [/area of a (rectangle|square)/,"Area of a rectangle = length × width. For a square, it's side × side."],
+ [/area of a circle/,"Area of a circle = π × radius²."],
+ [/area of a triangle/,"Area of a triangle = ½ × base × height."],
+ [/pythagorean/,"The Pythagorean theorem says that in a right triangle, a² + b² = c², where c is the longest side."],
+ [/\b(ai|artificial intelligence)\b/,"Artificial intelligence means computers doing things that normally need human thinking, like recognizing pictures or answering questions."],
+ [/neural network/,"A neural network is a computer model loosely inspired by the brain. It has layers of \"neurons\" with weights that get adjusted during training. I'm a tiny one!"],
+ [/computer/,"A computer is a machine that follows instructions, called programs, to process information."],
+];
+
+const NUMWORDS={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90,hundred:100};
+function mathReply(s){
+  let t=s.replace(/[?!]/g,' ').replace(/,(?=\d{3})/g,'');
+  t=t.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)\b/g,w=>NUMWORDS[w]);
+  let m=t.match(/square root of\s*(-?\d+(?:\.\d+)?)/); if(m){ const n=+m[1]; return n<0?"Square roots of negative numbers aren't real numbers, so I'll pass on that one.":`The square root of ${n} is ${+Math.sqrt(n).toFixed(4)}.`; }
+  m=t.match(/(\d+(?:\.\d+)?)\s*(?:%|percent)\s*of\s*(\d+(?:\.\d+)?)/); if(m) return `${m[1]}% of ${m[2]} is ${+(m[1]*m[2]/100).toFixed(4)}.`;
+  m=t.match(/(-?\d+(?:\.\d+)?)\s*(?:squared)/); if(m) return `${m[1]} squared is ${+(m[1]**2).toFixed(4)}.`;
+  t=t.replace(/\bplus\b|\band\b(?=\s*\d)/g,'+').replace(/\bminus\b|\bsubtract(ed)?\b/g,'-').replace(/\b(times|multiplied by)\b|[x×]/g,'*').replace(/\b(divided by|over)\b|÷/g,'/');
+  const expr=(t.match(/[-+*/().\d\s]+/g)||[]).map(x=>x.trim()).filter(x=>/\d/.test(x)&&/[-+*/]/.test(x.replace(/^-/,''))).sort((a,b)=>b.length-a.length)[0];
+  if(!expr) return null;
+  // tiny safe parser: + - * / and parentheses only
+  let i=0; const src=expr.replace(/\s+/g,'');
+  const num=()=>{ if(src[i]==='('){ i++; const v=add(); i++; return v; } if(src[i]==='-'){ i++; return -num(); } const m=src.slice(i).match(/^\d+(\.\d+)?/); if(!m) throw 0; i+=m[0].length; return +m[0]; };
+  const mul=()=>{ let v=num(); while(src[i]==='*'||src[i]==='/'){ const op=src[i++]; const r=num(); if(op==='/'&&r===0) throw 'div0'; v=op==='*'?v*r:v/r; } return v; };
+  const add=()=>{ let v=mul(); while(src[i]==='+'||src[i]==='-'){ const op=src[i++]; const r=mul(); v=op==='+'?v+r:v-r; } return v; };
+  try{ const v=add(); if(i!==src.length) return null; return `${expr.replace(/\*/g,'×').replace(/\//g,'÷')} = ${+v.toFixed(6)}`; }
+  catch(e){ return e==='div0'?"You can't divide by zero. Even neural networks know that one!":null; }
+}
+
+function brainReply(t){
+  const s=t.toLowerCase().trim();
+  for(const [re,answers] of SMALLTALK) if(re.test(s)) return pick(answers);
+  const xm=s.match(/([01])\s*(?:xor|\^|⊕)\s*([01])/)||s.match(/^([01])\s*[, ]\s*([01])$/);
+  if(xm) return null; // let the XOR network handle it
+  const m=mathReply(s); if(m) return m;
+  if(/^(what|who|where|when|why|how|define|tell me|explain|what'?s)\b|\?$|meaning of|what is/.test(s) || s.split(/\s+/).length<=4)
+  { let best=null, len=0; for(const [re,a] of FACTS){ const m=s.match(re); if(m&&m[0].length>len){ best=a; len=m[0].length; } } if(best) return best; }
+  return null;
+}
+
+function reply(t){
+  const b=brainReply(t); if(b) return b;
+  const s=t.toLowerCase().trim();
+  const m=s.match(/([01])\s*(?:xor|\^|⊕|,|\s)\s*([01])/);
+  if(m){ const a=+m[1], b=+m[2], o=forward([a,b])[1];
+    return `${a} XOR ${b} → ${o.toFixed(4)}, so my answer is ${Math.round(o)}.\n(That came straight from my 3 hidden neurons.)`; }
+  if(/^(hi|hey|hello|yo|sup)\b/.test(s)) return "Hey! I'm 67.ai. My brain is tiny but it's mine. Ask me something like \"0 xor 1\".";
+  if(/67|name|who are you/.test(s)) return "I'm 67.ai, named after Mr67. I was built from scratch, starting with the code on the right.";
+  if(/xor|how.*work|neural|network|brain/.test(s)) return "I'm a 2-layer network: 2 inputs, 3 hidden neurons, 1 output, all sigmoid. I learned XOR with hand-written backprop over 10,000 epochs. Current loss: "+finalLoss.toFixed(6)+".";
+  if(/table|all/.test(s)) return data.map(([x])=>`${x[0]} XOR ${x[1]} → ${forward(x)[1].toFixed(4)}`).join('\n');
+  if(/retrain|train again|reset/.test(s)){ w1=Array.from({length:H},()=>[r(),r()]); b1=Array(H).fill(0); w2=Array.from({length:H},r); b2=0; train(10000);
+    document.getElementById('status').innerHTML='Neural net <b>retrained</b> · loss '+finalLoss.toFixed(6); return "Retrained from fresh random weights. New loss: "+finalLoss.toFixed(6)+"."; }
+  if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• show the table, retrain";
+  return "Hmm, I don't know that one yet. I'm still a young AI. Try a math problem, a school question like \"what is gravity?\", or \"1 xor 0\". Type \"help\" for more.";
+}
+add("Hi, I'm 67.ai 👋 I'm a neural network built from scratch. Ask me how my day is, give me a math problem, ask a school question, or try \"1 xor 0\".","bot");
+document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return; add(t,'user'); i.value=''; setTimeout(()=>add(reply(t),'bot'),300); });
+</script>
+</body>
+</html>
