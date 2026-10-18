@@ -40,6 +40,24 @@
   .status{font-size:.85rem;color:#9b9b9b;padding:0 20px 10px}.status b{color:#5ee0a0;font-weight:600}
   .drawer p{font-size:.85rem;color:#9b9b9b;padding:0 20px 12px;line-height:1.5}
   pre{flex:1;overflow:auto;margin:0 16px 16px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:12px;padding:16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.55;color:#cfcfcf}
+  .spacer{flex:1}
+  .tokens{font-size:.8rem;color:#8e8e8e}
+  .pro{background:#ececec;color:#000;border:0;border-radius:999px;padding:7px 14px;font-weight:600;font-size:.85rem;cursor:pointer}
+  .pro.on{background:#2f2f2f;color:#5ee0a0}
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:30;padding:20px}
+  body.sub .modal{display:flex}
+  .card{background:#1c1c1c;border:1px solid #333;border-radius:22px;max-width:380px;width:100%;padding:26px 24px;text-align:center;position:relative}
+  .card .x{position:absolute;top:12px;right:14px;background:none;border:0;color:#9b9b9b;font-size:1.4rem;cursor:pointer}
+  .card h3{font-size:1.25rem;font-weight:600}
+  .price{font-size:2.4rem;font-weight:700;margin:10px 0 2px}.price small{font-size:1rem;color:#9b9b9b;font-weight:400}
+  .card ul{list-style:none;color:#cfcfcf;font-size:.92rem;line-height:1.9;margin:10px 0 16px}
+  .qr{width:150px;height:150px;margin:0 auto 14px;border:2px dashed #555;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#777;font-size:.8rem;padding:10px}
+  .cash{background:#00d632;color:#000;font-weight:700;border-radius:12px;padding:12px;font-size:.95rem;margin-bottom:10px}
+  .card p{color:#9b9b9b;font-size:.82rem;line-height:1.5;margin-bottom:12px}
+  .unlock{display:flex;gap:8px}.unlock input{flex:1;background:#262626;border:1px solid #3a3a3a;border-radius:10px;padding:10px 12px;color:#fff;font-size:.9rem}
+  .unlock button{background:#3b6fd4;color:#fff;border:0;border-radius:10px;padding:0 14px;font-weight:600;cursor:pointer}
+  .umsg{font-size:.8rem;margin-top:8px;min-height:1em}
+  form.locked{opacity:.55}
 </style>
 </head>
 <body>
@@ -87,9 +105,26 @@ for x, y in data:
     print(f&quot;  {x} -&gt; {o:.4f}  (rounded {round(o)}, target {y})&quot;)
 </code></pre>
 </aside>
+<div class="modal" onclick="if(event.target===this)closeSub()">
+  <div class="card">
+    <button class="x" onclick="closeSub()" aria-label="Close">×</button>
+    <h3>67.ai Premium</h3>
+    <div class="price">$1.99<small> / month</small></div>
+    <ul><li>✓ Unlimited messages</li><li>✓ All tools: math, facts, finance, XOR</li><li>✓ Support an AI built from scratch</li></ul>
+    <!-- Replace this box with your Cash App QR code image, e.g. <img src="cashapp-qr.png" width="150"> -->
+    <div class="qr">Cash App QR code goes here</div>
+    <div class="cash">Send $1.99 to <span id="cashtag">$YOUR_CASHAPP_TAG</span> on Cash App</div>
+    <p>Send $1.99 each month to unlock premium features. Put your email in the payment note, and you'll get an unlock code to enter below.</p>
+    <div class="unlock"><input id="code" placeholder="Unlock code" autocomplete="off"><button onclick="redeem()">Unlock</button></div>
+    <div class="umsg" id="umsg"></div>
+  </div>
+</div>
 <header>
   <button class="menu" aria-label="Menu" onclick="document.body.classList.toggle('open')"><span></span><span></span></button>
   <div class="brand">67.ai <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+  <div class="spacer"></div>
+  <span class="tokens" id="tokens"></span>
+  <button class="pro" id="proBtn" onclick="openSub()">Get Premium</button>
 </header>
 <main>
   <div class="hero"><h1>Where should we begin?</h1></div>
@@ -304,10 +339,37 @@ function reply(t){
   if(/table|all/.test(s)) return data.map(([x])=>`${x[0]} XOR ${x[1]} → ${forward(x)[1].toFixed(4)}`).join('\n');
   if(/retrain|train again|reset/.test(s)){ w1=Array.from({length:H},()=>[r(),r()]); b1=Array(H).fill(0); w2=Array.from({length:H},r); b2=0; train(10000);
     document.getElementById('status').innerHTML='Neural net <b>retrained</b> · loss '+finalLoss.toFixed(6); return "Retrained from fresh random weights. New loss: "+finalLoss.toFixed(6)+"."; }
+  if(/^(tokens|how many tokens|my tokens|balance)\??$/.test(s)){ const u=usage(); return u.premiumUntil?'You have Premium, so your messages are unlimited.':`You have ${u.tokens} free tokens left. They refresh to ${FREE_TOKENS} every 3 weeks. Premium is unlimited for $1.99/month.`; }
+  if(/premium|subscribe|subscription|upgrade|cash ?app/.test(s)){ setTimeout(openSub,400); return `Premium is $1.99/month for unlimited messages. Send $1.99 to ${CASHAPP_TAG} on Cash App, and you'll get an unlock code to enter.`; }
   if(/help|what can you do/.test(s)) return "I can do a few things:\n• XOR with my neural net: 1 xor 1\n• Math: 12 times 7, 48 / 6, square root of 81\n• Facts: what is photosynthesis? capital of Japan?\n• Small talk: how's your day?\n• Money: type \"finance\" for interest, loans, savings, tax, conversions\n• show the table, retrain";
   return "Hmm, I don't know that one yet. I'm still a young AI. Try a math problem, a school question like \"what is gravity?\", or \"1 xor 0\". Type \"help\" for more.";
 }
-document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return; add(t,'user'); i.value=''; setTimeout(()=>add(reply(t),'bot'),300); });
+
+// ===== Tokens + subscription =====
+const CASHAPP_TAG='$YOUR_CASHAPP_TAG';      // replace with your real $cashtag
+const UNLOCK_CODES=['CHANGE-ME-67'];        // replace with the code(s) you give paying subscribers
+const FREE_TOKENS=30, REFRESH_MS=21*24*60*60*1000, PREMIUM_MS=31*24*60*60*1000;
+const store={ get(){ try{return JSON.parse(localStorage.getItem('67ai_usage'))||{};}catch(e){return {};} }, set(v){ try{localStorage.setItem('67ai_usage',JSON.stringify(v));}catch(e){} } };
+function usage(){ const now=Date.now(); let u=store.get();
+  if(typeof u.tokens!=='number'||!u.resetAt||now>=u.resetAt){ u.tokens=FREE_TOKENS; u.resetAt=now+REFRESH_MS; }
+  if(u.premiumUntil&&now>=u.premiumUntil) u.premiumUntil=0; store.set(u); return u; }
+const isPremium=()=>!!usage().premiumUntil;
+function renderTokens(){ const u=usage(), el=document.getElementById('tokens'), btn=document.getElementById('proBtn'), f=document.getElementById('form');
+  if(u.premiumUntil){ el.textContent='Unlimited'; btn.textContent='Premium ✓'; btn.classList.add('on'); f.classList.remove('locked'); }
+  else { const days=Math.ceil((u.resetAt-Date.now())/86400000); el.textContent=`${u.tokens} tokens left`; el.title=`Refreshes to ${FREE_TOKENS} in ${days} day${days===1?'':'s'}`; btn.textContent='Get Premium'; btn.classList.remove('on'); f.classList.toggle('locked',u.tokens<=0); } }
+function spendToken(){ const u=usage(); if(u.premiumUntil) return true; if(u.tokens<=0) return false; u.tokens--; store.set(u); renderTokens(); return true; }
+function openSub(){ document.body.classList.add('sub'); }
+function closeSub(){ document.body.classList.remove('sub'); }
+function redeem(){ const c=document.getElementById('code').value.trim().toUpperCase(), m=document.getElementById('umsg');
+  if(UNLOCK_CODES.map(x=>x.toUpperCase()).includes(c)){ const u=usage(); u.premiumUntil=Date.now()+PREMIUM_MS; store.set(u); renderTokens(); m.style.color='#5ee0a0'; m.textContent='Premium unlocked for 31 days. Enjoy unlimited 67.ai!'; setTimeout(closeSub,1400); }
+  else { m.style.color='#ff6b6b'; m.textContent="That code didn't work. Double-check it or message us."; } }
+document.getElementById('cashtag').textContent=CASHAPP_TAG;
+renderTokens();
+document.getElementById('form').addEventListener('submit',e=>{ e.preventDefault(); const i=document.getElementById('input'); const t=i.value.trim(); if(!t) return;
+  add(t,'user'); i.value='';
+  if(!spendToken()){ const u=usage(), days=Math.ceil((u.resetAt-Date.now())/86400000);
+    setTimeout(()=>{ add(`You're out of free tokens. 😕 Your ${FREE_TOKENS} free tokens refresh in ${days} day${days===1?'':'s'}.\n\nWant unlimited 67.ai now? Subscribe for $1.99/month: send $1.99 to ${CASHAPP_TAG} on Cash App, then enter your unlock code.`,'bot'); openSub(); },300); return; }
+  setTimeout(()=>add(reply(t),'bot'),300); });
 </script>
 </body>
 </html>
